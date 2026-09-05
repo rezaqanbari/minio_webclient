@@ -1,0 +1,166 @@
+@model List<minio_csharpClient.Models.BucketViewModel>
+@{
+    ViewData["Title"] = "مدیریت باکت‌ها (Buckets)";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-archive-fill text-primary"></i> مدیریت باکت‌ها (Buckets)
+        </h4>
+        <div class="text-muted small">مشاهده، ایجاد و حذف مخازن ذخیره‌سازی ابری MinIO</div>
+    </div>
+    <button type="button" class="btn btn-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createBucketModal">
+        <i class="bi bi-plus-lg"></i> باکت جدید
+    </button>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-3">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="bucketSearchInput" class="form-control border-start-0 font-monospace" placeholder="جستجو در نام باکت‌ها...">
+                </div>
+            </div>
+            <div class="col-md-6 text-md-end mt-2 mt-md-0 text-muted small">
+                <span>تعداد کل باکت‌ها: <strong class="text-dark">@Model.Count</strong></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="bucketsTable">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col" class="py-3 px-4" style="width: 60px;">#</th>
+                    <th scope="col" class="py-3">نام باکت (Bucket Name)</th>
+                    <th scope="col" class="py-3">تاریخ و زمان ایجاد</th>
+                    <th scope="col" class="py-3 text-center" style="width: 220px;">عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model == null || Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                            هیچ باکتی یافت نشد. با کلیک بر روی «باکت جدید» اولین باکت خود را ایجاد کنید.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    int index = 1;
+                    foreach (var bucket in Model)
+                    {
+                        <tr class="bucket-row">
+                            <td class="px-4 text-muted small">@index</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-bucket-fill text-primary fs-5"></i>
+                                    <div>
+                                        <a asp-controller="Objects" asp-action="Index" asp-route-bucketName="@bucket.Name" class="fw-bold text-decoration-none text-dark hover-primary font-monospace bucket-name-text">
+                                            @bucket.Name
+                                        </a>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-muted small font-monospace">
+                                @bucket.FormattedCreationDate
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a asp-controller="Objects" asp-action="Index" asp-route-bucketName="@bucket.Name" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
+                                        <i class="bi bi-folder2-open"></i> مرور و مدیریت فایل‌ها
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" title="حذف باکت" onclick="confirmDeleteBucket('@bucket.Name')">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        index++;
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Create Bucket -->
+<div class="modal fade" id="createBucketModal" tabindex="-1" aria-labelledby="createBucketModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-controller="Buckets" asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="createBucketModalLabel">
+                        <i class="bi bi-folder-plus text-primary"></i> ایجاد باکت جدید
+                    </h5>
+                    <button type="button" class="btn-close ms-0 me-auto" data-bs-dismiss="modal" aria-label="بستن"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="bucketNameInput" class="form-label">نام باکت (Bucket Name)</label>
+                        <input type="text" class="form-control font-monospace" id="bucketNameInput" name="BucketName" placeholder="مثال: my-bucket-name" required autofocus>
+                        <div class="form-text small">
+                            قوانین نام‌گذاری: فقط حروف کوچک انگلیسی (a-z)، اعداد (0-9) و خط تیره (-) مجاز است.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
+                    <button type="submit" class="btn btn-primary d-flex align-items-center gap-1">
+                        <i class="bi bi-check-lg"></i> ایجاد باکت
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Form for Delete Bucket -->
+<form id="deleteBucketForm" asp-controller="Buckets" asp-action="Delete" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="bucketName" id="deleteBucketNameInput" />
+</form>
+
+@section Scripts {
+    <script>
+        // Realtime bucket search
+        document.getElementById('bucketSearchInput')?.addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase().trim();
+            const rows = document.querySelectorAll('.bucket-row');
+            rows.forEach(row => {
+                const name = row.querySelector('.bucket-name-text')?.textContent.toLowerCase() || '';
+                if (name.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        function confirmDeleteBucket(bucketName) {
+            Swal.fire({
+                title: 'آیا از حذف باکت مطمئن هستید؟',
+                text: `باکت "${bucketName}" حذف خواهد شد. توجه داشته باشید باکت باید خالی از هرگونه فایل باشد.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'بله، حذف کن',
+                cancelButtonText: 'انصراف'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('deleteBucketNameInput').value = bucketName;
+                    document.getElementById('deleteBucketForm').submit();
+                }
+            });
+        }
+    </script>
+}
