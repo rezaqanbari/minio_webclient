@@ -1,0 +1,16 @@
+services:
+  minio-webclient:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: minio_webclient
+    restart: unless-stopped
+    ports:
+      - "${PORT:-5175}:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-your-minio-server.com}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-YOUR_MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-YOUR_MINIO_SECRET_KEY}
+      - MINIO_WITH_SSL=${MINIO_WITH_SSL:-true}
+      - MINIO_REGION=${MINIO_REGION:-}

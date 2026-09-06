@@ -1,0 +1,9 @@
+**/.git
+**/.gitignore
+**/.vs
+**/bin
+**/obj
+appsettings.Development.json
+*.user
+*.suo
+README.md

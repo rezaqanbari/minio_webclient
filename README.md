@@ -58,15 +58,67 @@
 
 ---
 
-## نحوه اجرا
+## نحوه راه‌اندازی و اجرا با Docker (ساده‌ترین روش روی سرور)
 
-### با دستور CLI:
+### روش اول: استفاده از Docker Compose (توصیه شده)
+
+1. مخزن را روی سرور کلون کنید:
 ```bash
-cd d:\MyProject\minio_csharpClient
+git clone https://github.com/rezaqanbari/minio_webclient.git
+cd minio_webclient
+```
+
+2. فایل تنظیمات متغیرهای محیطی `.env` را از روی نمونه بسازید:
+```bash
+cp .env.example .env
+```
+
+3. فایل `.env` را با یک ویرایشگر باز کرده و آدرس و کلیدهای سرور MinIO خود را وارد کنید:
+```env
+PORT=5175
+MINIO_ENDPOINT=your-minio-server.com
+MINIO_ACCESS_KEY=YOUR_MINIO_ACCESS_KEY
+MINIO_SECRET_KEY=YOUR_MINIO_SECRET_KEY
+MINIO_WITH_SSL=true
+MINIO_REGION=
+```
+
+4. با دستور زیر پروژه را بیلد و اجرا کنید:
+```bash
+docker compose up -d --build
+```
+
+اکنون سامانه روی پورت `5175` در دسترس است:
+`http://SERVER_IP:5175`
+
+---
+
+### روش دوم: اجرای مستقیم با دستور Docker Run
+
+```bash
+docker build -t minio_webclient .
+
+docker run -d \
+  --name minio_webclient \
+  --restart unless-stopped \
+  -p 5175:8080 \
+  -e MINIO_ENDPOINT="your-minio-server.com" \
+  -e MINIO_ACCESS_KEY="YOUR_MINIO_ACCESS_KEY" \
+  -e MINIO_SECRET_KEY="YOUR_MINIO_SECRET_KEY" \
+  -e MINIO_WITH_SSL=true \
+  minio_webclient
+```
+
+---
+
+## نحوه اجرا به صورت لوکال بدون داکر
+
+### با دستور dotnet CLI:
+```bash
+cd minio_webclient
 dotnet run --launch-profile http
 ```
-سپس مرورگر خود را باز کرده و به آدرس زیر بروید:
-**[http://localhost:5175](http://localhost:5175)**
+سپس مرورگر را باز کرده و به آدرس `http://localhost:5175` بروید.
 
 ### با Visual Studio / Rider:
 فایل پروژه `minio_csharpClient.csproj` را باز کرده و دکمه **Run / Debug (F5)** را بزنید.
