@@ -75,7 +75,8 @@ cp .env.example .env
 
 3. فایل `.env` را با یک ویرایشگر باز کرده و آدرس و کلیدهای سرور MinIO خود را وارد کنید:
 ```env
-PORT=5175
+PORT_API=9000
+PORT_CONSOLE=9001
 MINIO_ENDPOINT=your-minio-server.com
 MINIO_ACCESS_KEY=YOUR_MINIO_ACCESS_KEY
 MINIO_SECRET_KEY=YOUR_MINIO_SECRET_KEY
@@ -88,8 +89,9 @@ MINIO_REGION=
 docker compose up -d --build
 ```
 
-اکنون سامانه روی پورت `5175` در دسترس است:
-`http://SERVER_IP:5175`
+اکنون سامانه بر روی پورت‌های **9000** و **9001** در دسترس است:
+- `http://SERVER_IP:9000`
+- `http://SERVER_IP:9001`
 
 ---
 
@@ -101,7 +103,8 @@ docker build -t minio_webclient .
 docker run -d \
   --name minio_webclient \
   --restart unless-stopped \
-  -p 5175:8080 \
+  -p 9000:8080 \
+  -p 9001:8080 \
   -e MINIO_ENDPOINT="your-minio-server.com" \
   -e MINIO_ACCESS_KEY="YOUR_MINIO_ACCESS_KEY" \
   -e MINIO_SECRET_KEY="YOUR_MINIO_SECRET_KEY" \
