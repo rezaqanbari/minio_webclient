@@ -14,10 +14,12 @@ namespace minio_csharpClient.Controllers;
 public class BucketsController : Controller
 {
     private readonly IMinioService _minioService;
+    private readonly IActivityLogService _logService;
 
-    public BucketsController(IMinioService minioService)
+    public BucketsController(IMinioService minioService, IActivityLogService logService)
     {
         _minioService = minioService;
+        _logService = logService;
     }
 
     public async Task<IActionResult> Index()
@@ -38,7 +40,6 @@ public class BucketsController : Controller
                 buckets = buckets.Where(b => b.Name.Equals(allowedBucket, StringComparison.OrdinalIgnoreCase)).ToList();
 
                 var allowedPrefix = User.FindFirst("AllowedPrefix")?.Value;
-                // If user only has access to one bucket and has a specific prefix, they can jump directly or view it
                 ViewData["AllowedPrefix"] = allowedPrefix;
             }
 
@@ -74,10 +75,32 @@ public class BucketsController : Controller
         try
         {
             await _minioService.CreateBucketAsync(name);
+
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "Admin",
+                action: "ایجاد باکت جدید",
+                category: "Bucket",
+                details: $"ایجاد باکت با نام '{name}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Info"
+            );
+
             TempData["Success"] = $"باکت '{name}' با موفقیت ایجاد شد.";
         }
         catch (Exception ex)
         {
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "Admin",
+                action: "خطا در ایجاد باکت",
+                category: "Bucket",
+                details: $"شکست در ایجاد باکت '{name}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: false,
+                logLevel: "Error",
+                errorMessage: ex.ToString()
+            );
+
             TempData["Error"] = $"خطا در ایجاد باکت: {ex.Message}";
         }
 
@@ -98,10 +121,32 @@ public class BucketsController : Controller
         try
         {
             await _minioService.DeleteBucketAsync(bucketName);
+
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "Admin",
+                action: "حذف باکت",
+                category: "Bucket",
+                details: $"حذف کامل باکت '{bucketName}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Warning"
+            );
+
             TempData["Success"] = $"باکت '{bucketName}' با موفقیت حذف شد.";
         }
         catch (Exception ex)
         {
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "Admin",
+                action: "خطا در حذف باکت",
+                category: "Bucket",
+                details: $"شکست در حذف باکت '{bucketName}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: false,
+                logLevel: "Error",
+                errorMessage: ex.ToString()
+            );
+
             TempData["Error"] = $"خطا در حذف باکت '{bucketName}': توجه داشته باشید باکت باید خالی از فایل باشد تا حذف شود. جزئیات: {ex.Message}";
         }
 

@@ -15,10 +15,12 @@ namespace minio_csharpClient.Controllers;
 public class ObjectsController : Controller
 {
     private readonly IMinioService _minioService;
+    private readonly IActivityLogService _logService;
 
-    public ObjectsController(IMinioService minioService)
+    public ObjectsController(IMinioService minioService, IActivityLogService logService)
     {
         _minioService = minioService;
+        _logService = logService;
     }
 
     [HttpGet]
@@ -158,10 +160,32 @@ public class ObjectsController : Controller
             using var stream = file.OpenReadStream();
             var detectedContentType = GetExactMimeType(fileName, file.ContentType);
             await _minioService.UploadObjectAsync(bucketName, objectKey, stream, file.Length, detectedContentType);
+
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "ناشناس",
+                action: "بارگذاری فایل",
+                category: "File",
+                details: $"آپلود فایل '{fileName}' در باکت '{bucketName}' (مسیر: {objectKey}، حجم: {FormatSize(file.Length)})",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Info"
+            );
+
             return Ok(new { success = true, fileName, size = file.Length });
         }
         catch (Exception ex)
         {
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "ناشناس",
+                action: "خطا در بارگذاری فایل",
+                category: "File",
+                details: $"شکست در آپلود فایل '{fileName}' در باکت '{bucketName}' (مسیر: {objectKey}، حجم: {FormatSize(file.Length)})",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: false,
+                logLevel: "Error",
+                errorMessage: ex.ToString()
+            );
+
             return BadRequest(new { success = false, message = ex.Message });
         }
     }
@@ -196,10 +220,32 @@ public class ObjectsController : Controller
         try
         {
             await _minioService.CreateFolderAsync(model.BucketName, effectivePrefix, model.FolderName);
+
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "ناشناس",
+                action: "ایجاد پوشه",
+                category: "Folder",
+                details: $"ایجاد پوشه '{model.FolderName}' در باکت '{model.BucketName}' (مسیر: {effectivePrefix})",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Info"
+            );
+
             TempData["Success"] = $"پوشه '{model.FolderName}' با موفقیت ساخته شد.";
         }
         catch (Exception ex)
         {
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "ناشناس",
+                action: "خطا در ایجاد پوشه",
+                category: "Folder",
+                details: $"شکست در ایجاد پوشه '{model.FolderName}' در باکت '{model.BucketName}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: false,
+                logLevel: "Error",
+                errorMessage: ex.ToString()
+            );
+
             TempData["Error"] = $"خطا در ایجاد پوشه: {ex.Message}";
         }
 
@@ -222,10 +268,32 @@ public class ObjectsController : Controller
         try
         {
             var (stream, contentType, fileName) = await _minioService.DownloadObjectAsync(bucketName, key);
+
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "ناشناس",
+                action: "دانلود فایل",
+                category: "File",
+                details: $"دانلود فایل '{key}' از باکت '{bucketName}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Info"
+            );
+
             return File(stream, contentType, fileName);
         }
         catch (Exception ex)
         {
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "ناشناس",
+                action: "خطا در دانلود فایل",
+                category: "File",
+                details: $"شکست در دانلود فایل '{key}' از باکت '{bucketName}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: false,
+                logLevel: "Error",
+                errorMessage: ex.ToString()
+            );
+
             TempData["Error"] = $"خطا در دانلود فایل: {ex.Message}";
             return RedirectToAction(nameof(Index), new { bucketName });
         }
@@ -362,10 +430,32 @@ public class ObjectsController : Controller
         try
         {
             await _minioService.DeleteObjectAsync(bucketName, key);
+
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "ناشناس",
+                action: "حذف فایل",
+                category: "File",
+                details: $"حذف فایل '{key}' از باکت '{bucketName}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Warning"
+            );
+
             TempData["Success"] = "فایل با موفقیت حذف شد.";
         }
         catch (Exception ex)
         {
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "ناشناس",
+                action: "خطا در حذف فایل",
+                category: "File",
+                details: $"شکست در حذف فایل '{key}' از باکت '{bucketName}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: false,
+                logLevel: "Error",
+                errorMessage: ex.ToString()
+            );
+
             TempData["Error"] = $"خطا در حذف فایل: {ex.Message}";
         }
 
@@ -384,14 +474,50 @@ public class ObjectsController : Controller
         try
         {
             await _minioService.DeleteFolderAsync(bucketName, folderPrefix);
+
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "ناشناس",
+                action: "حذف پوشه",
+                category: "Folder",
+                details: $"حذف کامل پوشه '{folderPrefix}' از باکت '{bucketName}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Warning"
+            );
+
             TempData["Success"] = "پوشه و تمام فایل‌های داخل آن با موفقیت حذف شدند.";
         }
         catch (Exception ex)
         {
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "ناشناس",
+                action: "خطا در حذف پوشه",
+                category: "Folder",
+                details: $"شکست در حذف پوشه '{folderPrefix}' از باکت '{bucketName}'",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: false,
+                logLevel: "Error",
+                errorMessage: ex.ToString()
+            );
+
             TempData["Error"] = $"خطا در حذف پوشه: {ex.Message}";
         }
 
         return RedirectToAction(nameof(Index), new { bucketName, prefix });
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes <= 0) return "0 B";
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        int order = 0;
+        double len = bytes;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
     }
 
     #region Scope Authorization Helpers

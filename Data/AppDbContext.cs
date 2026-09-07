@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<AppActivityLog> ActivityLogs => Set<AppActivityLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -18,6 +19,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AppUser>(entity =>
         {
             entity.HasIndex(u => u.Username).IsUnique();
+        });
+
+        modelBuilder.Entity<AppActivityLog>(entity =>
+        {
+            entity.HasIndex(l => l.Timestamp);
+            entity.HasIndex(l => l.Username);
+            entity.HasIndex(l => l.Category);
+            entity.HasIndex(l => l.LogLevel);
         });
     }
 }

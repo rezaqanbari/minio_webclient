@@ -29,8 +29,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}");
 });
 
-// Register User Service
+// Register Services
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 
 // Configure MinIO Options (from appsettings and environment variables)
 builder.Services.Configure<MinioOptions>(options =>
@@ -68,10 +69,23 @@ builder.Services.Configure<AuthOptions>(options =>
 // Register MinIO Service
 builder.Services.AddSingleton<IMinioService, MinioService>();
 
+// Configure Kestrel limits (up to 500 MB)
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 524288000; // 500 MB
+});
+
 // Configure large file uploads (up to 500 MB)
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 524288000;
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartHeadersLengthLimit = int.MaxValue;
+});
+
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 524288000;
 });
 
 // Cookie Authentication with RELATIVE redirects (prevents redirecting to localhost behind reverse proxies)
@@ -143,6 +157,30 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
 }
+
+// Global Exception Logging Middleware
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        try
+        {
+            var logService = context.RequestServices.GetService<IActivityLogService>();
+            if (logService != null)
+            {
+                var username = context.User?.Identity?.Name ?? "ناشناس";
+                var ip = context.Connection.RemoteIpAddress?.ToString();
+                await logService.LogExceptionAsync(ex, username, context.Request.Path, ip);
+            }
+        }
+        catch { }
+        throw;
+    }
+});
 
 app.UseStaticFiles();
 app.UseRouting();

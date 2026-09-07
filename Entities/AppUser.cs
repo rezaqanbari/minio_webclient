@@ -27,5 +27,7 @@ public class AppUser
 
     public bool IsActive { get; set; } = true;
 
+    public bool CanViewAuditLogs { get; set; } = false;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

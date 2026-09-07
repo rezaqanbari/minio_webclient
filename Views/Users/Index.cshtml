@@ -89,6 +89,12 @@
                                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
                                         <i class="bi bi-person me-1"></i> کاربر عادی (User)
                                     </span>
+                                    @if (user.CanViewAuditLogs)
+                                    {
+                                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1 mt-1 d-inline-block small" title="دسترسی به گزارش عملکرد و لاگ‌های سیستم">
+                                            <i class="bi bi-shield-check me-1"></i> مشاهده لاگ‌ها
+                                        </span>
+                                    }
                                 }
                             </td>
                             <td>

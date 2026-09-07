@@ -573,16 +573,23 @@
                         }
                     } else {
                         let msg = `خطای سرور: ${xhr.status}`;
-                        try {
-                            const res = JSON.parse(xhr.responseText);
-                            if (res.message) msg = res.message;
-                        } catch {}
+                        if (xhr.status === 413) {
+                            msg = 'خطای ۴۱۳ (حجم فایل بیش از حد مجاز Nginx است. مقدار client_max_body_size در سرور باید افزایش یابد)';
+                        } else {
+                            try {
+                                const res = JSON.parse(xhr.responseText);
+                                if (res.message) msg = res.message;
+                            } catch {}
+                        }
+                        reportClientError('شکست در آپلود فایل', `آپلود '${file.name}' به باکت '${bucketName}' (${formatBytes(file.size)})`, msg, xhr.status);
                         reject(new Error(msg));
                     }
                 });
 
                 xhr.addEventListener('error', () => {
-                    reject(new Error('خطا در ارتباط با سرور'));
+                    const msg = 'خطا در ارتباط شبکه با سرور (احتمال قطع اتصال یا مسدود شدن درخواست توسط Nginx/فایروال)';
+                    reportClientError('خطای ارتباط شبکه در آپلود', `فایل '${file.name}' (${formatBytes(file.size)})`, msg, 0);
+                    reject(new Error(msg));
                 });
 
                 xhr.addEventListener('abort', () => {
@@ -592,6 +599,22 @@
                 xhr.open('POST', '/Objects/UploadSingle');
                 xhr.send(formData);
             });
+        }
+
+        function reportClientError(action, details, errorMsg, statusCode) {
+            try {
+                fetch('/ActivityLogs/LogClientError', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: action,
+                        category: 'File',
+                        details: details,
+                        errorMessage: errorMsg,
+                        statusCode: statusCode
+                    })
+                });
+            } catch (e) {}
         }
 
         // Delete File confirmation

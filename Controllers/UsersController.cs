@@ -13,11 +13,13 @@ public class UsersController : Controller
 {
     private readonly IUserService _userService;
     private readonly IMinioService _minioService;
+    private readonly IActivityLogService _logService;
 
-    public UsersController(IUserService userService, IMinioService minioService)
+    public UsersController(IUserService userService, IMinioService minioService, IActivityLogService logService)
     {
         _userService = userService;
         _minioService = minioService;
+        _logService = logService;
     }
 
     [HttpGet]
@@ -32,6 +34,7 @@ public class UsersController : Controller
             AllowedBucket = u.AllowedBucket,
             AllowedPrefix = u.AllowedPrefix,
             IsActive = u.IsActive,
+            CanViewAuditLogs = u.CanViewAuditLogs,
             CreatedAt = u.CreatedAt
         }).ToList();
 
@@ -59,6 +62,16 @@ public class UsersController : Controller
         var result = await _userService.CreateUserAsync(model);
         if (result.Success)
         {
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "Admin",
+                action: "ایجاد کاربر جدید",
+                category: "UserManagement",
+                details: $"ایجاد کاربر '{model.Username}' با نقش {model.Role} {(model.CanViewAuditLogs ? "(با دسترسی لاگ‌ها)" : "")}",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Info"
+            );
+
             TempData["SuccessMessage"] = $"کاربر «{model.Username}» با موفقیت ایجاد شد.";
             return RedirectToAction(nameof(Index));
         }
@@ -84,6 +97,7 @@ public class UsersController : Controller
             Role = user.Role,
             AllowedBucket = user.AllowedBucket,
             AllowedPrefix = user.AllowedPrefix,
+            CanViewAuditLogs = user.CanViewAuditLogs,
             IsActive = user.IsActive
         };
 
@@ -104,6 +118,16 @@ public class UsersController : Controller
         var result = await _userService.UpdateUserAsync(model);
         if (result.Success)
         {
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "Admin",
+                action: "ویرایش کاربر",
+                category: "UserManagement",
+                details: $"ویرایش کاربر '{model.Username}' (نقش: {model.Role}، دسترسی لاگ: {model.CanViewAuditLogs}، فعال: {model.IsActive})",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Info"
+            );
+
             TempData["SuccessMessage"] = $"اطلاعات کاربر «{model.Username}» با موفقیت به‌روزرسانی شد.";
             return RedirectToAction(nameof(Index));
         }
@@ -143,6 +167,16 @@ public class UsersController : Controller
         var result = await _userService.ResetPasswordAsync(model.UserId, model.NewPassword);
         if (result.Success)
         {
+            await _logService.LogAsync(
+                username: User.Identity?.Name ?? "Admin",
+                action: "بازنشانی رمز عبور کاربر",
+                category: "UserManagement",
+                details: $"بازنشانی رمز عبور کاربر '{model.Username}' توسط مدیر",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Warning"
+            );
+
             TempData["SuccessMessage"] = $"رمز عبور کاربر «{model.Username}» با موفقیت تغییر یافت.";
             return RedirectToAction(nameof(Index));
         }
@@ -156,9 +190,22 @@ public class UsersController : Controller
     public async Task<IActionResult> Delete(Guid id)
     {
         var currentUsername = User.Identity?.Name ?? string.Empty;
+        var user = await _userService.GetByIdAsync(id);
+        var targetUsername = user?.Username ?? id.ToString();
+
         var result = await _userService.DeleteUserAsync(id, currentUsername);
         if (result.Success)
         {
+            await _logService.LogAsync(
+                username: currentUsername,
+                action: "حذف کاربر",
+                category: "UserManagement",
+                details: $"حذف کاربر '{targetUsername}' توسط مدیر",
+                ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                isSuccess: true,
+                logLevel: "Warning"
+            );
+
             TempData["SuccessMessage"] = "کاربر مورد نظر با موفقیت حذف گردید.";
         }
         else

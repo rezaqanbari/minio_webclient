@@ -96,6 +96,14 @@
                         </div>
                     </div>
 
+                    <div class="form-check form-switch mb-3 p-3 bg-light rounded-3 border">
+                        <input asp-for="CanViewAuditLogs" class="form-check-input ms-0 me-3" type="checkbox" id="canViewAuditLogsCheck" />
+                        <label class="form-check-label fw-bold" for="canViewAuditLogsCheck">
+                            <i class="bi bi-shield-check text-success me-1"></i> دسترسی به گزارش عملکرد و لاگ‌های سیستم
+                        </label>
+                        <div class="form-text small me-4">در صورت فعال بودن، این کاربر امکان مشاهده صفحه گزارش عملکرد کاربران و رویدادهای سیستم را خواهد داشت.</div>
+                    </div>
+
                     <div class="d-flex justify-content-between align-items-center mt-4">
                         <a asp-action="Index" class="btn btn-outline-secondary">انصراف</a>
                         <button type="submit" class="btn btn-primary d-flex align-items-center gap-2">

@@ -12,6 +12,7 @@ public class UserItemViewModel
     public string? AllowedBucket { get; set; }
     public string? AllowedPrefix { get; set; }
     public bool IsActive { get; set; }
+    public bool CanViewAuditLogs { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -43,6 +44,9 @@ public class CreateUserViewModel
     [Display(Name = "پوشه یا پیشوند مجاز (Prefix)")]
     public string? AllowedPrefix { get; set; }
 
+    [Display(Name = "دسترسی به گزارش عملکرد و لاگ‌های سیستم")]
+    public bool CanViewAuditLogs { get; set; } = false;
+
     public List<string> AvailableBuckets { get; set; } = new();
 }
 
@@ -65,6 +69,9 @@ public class EditUserViewModel
 
     [Display(Name = "وضعیت حساب کاربری")]
     public bool IsActive { get; set; } = true;
+
+    [Display(Name = "دسترسی به گزارش عملکرد و لاگ‌های سیستم")]
+    public bool CanViewAuditLogs { get; set; } = false;
 
     public List<string> AvailableBuckets { get; set; } = new();
 }

@@ -92,6 +92,14 @@
                                     </a>
                                 </li>
                             }
+                            @if (User.IsInRole("Admin") || User.HasClaim(c => c.Type == "CanViewAuditLogs" && c.Value == "True"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-white-50 d-flex align-items-center gap-1" asp-controller="ActivityLogs" asp-action="Index">
+                                        <i class="bi bi-shield-check"></i> گزارش عملکرد و لاگ‌ها
+                                    </a>
+                                </li>
+                            }
                         </ul>
                     }
                     else
@@ -125,6 +133,14 @@
                                         <li>
                                             <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Users" asp-action="Index">
                                                 <i class="bi bi-people text-muted"></i> مدیریت کاربران
+                                            </a>
+                                        </li>
+                                    }
+                                    @if (User.IsInRole("Admin") || User.HasClaim(c => c.Type == "CanViewAuditLogs" && c.Value == "True"))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="ActivityLogs" asp-action="Index">
+                                                <i class="bi bi-shield-check text-muted"></i> گزارش عملکرد و لاگ‌ها
                                             </a>
                                         </li>
                                     }

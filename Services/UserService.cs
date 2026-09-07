@@ -68,6 +68,7 @@ public class UserService : IUserService
             Role = model.Role == "Admin" ? "Admin" : "User",
             AllowedBucket = model.Role == "Admin" ? null : CleanBucket(model.AllowedBucket),
             AllowedPrefix = model.Role == "Admin" ? null : CleanPrefix(model.AllowedPrefix),
+            CanViewAuditLogs = model.Role == "Admin" || model.CanViewAuditLogs,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -100,6 +101,7 @@ public class UserService : IUserService
         user.Role = model.Role == "Admin" ? "Admin" : "User";
         user.AllowedBucket = model.Role == "Admin" ? null : CleanBucket(model.AllowedBucket);
         user.AllowedPrefix = model.Role == "Admin" ? null : CleanPrefix(model.AllowedPrefix);
+        user.CanViewAuditLogs = model.Role == "Admin" || model.CanViewAuditLogs;
         user.IsActive = model.IsActive;
 
         await _db.SaveChangesAsync();
@@ -176,6 +178,7 @@ public class UserService : IUserService
             {
                 Username = uname,
                 Role = "Admin",
+                CanViewAuditLogs = true,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
