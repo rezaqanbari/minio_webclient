@@ -48,7 +48,7 @@
             </div>
             <h2 class="fw-bold mb-0 text-primary">@Model.Count</h2>
             <div class="text-muted small mt-2">
-                باکت‌های موجود در این سرور
+                باکت‌های در دسترس حساب شما
             </div>
         </div>
     </div>
@@ -61,17 +61,103 @@
                     <span class="text-muted small">عملیات سریع</span>
                     <i class="bi bi-lightning-charge-fill text-warning fs-4"></i>
                 </div>
-                <div class="small text-muted mb-3">ایجاد فوری باکت ذخیره‌سازی داده جدید</div>
+                <div class="small text-muted mb-3">
+                    @(User.IsInRole("Admin") ? "ایجاد فوری باکت ذخیره‌سازی داده جدید" : "مشاهده و مدیریت فایل‌های مجاز")
+                </div>
             </div>
-            <button type="button" class="btn btn-primary d-flex align-items-center justify-content-center gap-2 w-100" data-bs-toggle="modal" data-bs-target="#createBucketModal">
-                <i class="bi bi-plus-circle-fill"></i> ایجاد باکت جدید
-            </button>
+            @if (User.IsInRole("Admin"))
+            {
+                <button type="button" class="btn btn-primary d-flex align-items-center justify-content-center gap-2 w-100" data-bs-toggle="modal" data-bs-target="#createBucketModal">
+                    <i class="bi bi-plus-circle-fill"></i> ایجاد باکت جدید
+                </button>
+            }
+            else
+            {
+                <a asp-controller="Buckets" asp-action="Index" class="btn btn-outline-primary d-flex align-items-center justify-content-center gap-2 w-100">
+                    <i class="bi bi-folder2-open"></i> رفتن به باکت مجاز
+                </a>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Global Search Box Card -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-4">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h5 class="fw-bold mb-1 d-flex align-items-center gap-2">
+                    <i class="bi bi-search text-primary"></i> جستجوی سراسری در تمامی باکت‌ها و پوشه‌ها
+                </h5>
+                <div class="text-muted small mb-3">
+                    کلمه کلیدی، نام فایل، پسوند (مثلاً <span class="badge bg-light text-dark font-monospace">.mp3</span>) یا نام پوشه را وارد کنید تا در تمام زیرمجموعه‌ها جستجو شود.
+                </div>
+                <form id="globalSearchForm" onsubmit="executeGlobalSearch(event)">
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="globalSearchInput" class="form-control border-start-0 font-monospace" placeholder="جستجوی نام یا مسیر فایل..." required autofocus>
+                        <button class="btn btn-primary px-4 fw-bold d-flex align-items-center gap-2" type="submit" id="globalSearchBtn">
+                            <i class="bi bi-search"></i> جستجو
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="col-lg-4 mt-3 mt-lg-0">
+                <div class="p-3 bg-light rounded-3 text-muted small">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <i class="bi bi-folder2-open text-warning fs-5"></i>
+                        <span>پویش عمیق و بازگشتی (Recursive)</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-check text-success fs-5"></i>
+                        <span>اعمال خودکار محدوده دسترسی کاربر</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Global Search Results Card (Hidden by default) -->
+<div class="card shadow-sm border-0 mb-4 d-none" id="searchResultsCard">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-list-check text-primary fs-5"></i>
+            <h5 class="mb-0 fw-bold">
+                نتایج جستجو برای: «<span id="searchQueryDisplay" class="font-monospace text-primary"></span>»
+            </h5>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small ms-2" id="searchResultsCount"></span>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1" onclick="clearGlobalSearch()">
+            <i class="bi bi-x-lg"></i> بستن نتایج
+        </button>
+    </div>
+    <div class="card-body p-0">
+        <div id="searchLoadingSpinner" class="text-center py-5 d-none">
+            <div class="spinner-border text-primary" role="status"></div>
+            <div class="text-muted small mt-2">درحال پویش و جستجو در باکت‌ها و پوشه‌های MinIO...</div>
+        </div>
+        <div class="table-responsive" id="searchResultsTableContainer">
+            <table class="table table-hover align-middle mb-0" id="searchResultsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" class="py-3 px-3" style="width: 40px;">#</th>
+                        <th scope="col" class="py-3">باکت</th>
+                        <th scope="col" class="py-3">نام و مسیر فایل</th>
+                        <th scope="col" class="py-3">حجم</th>
+                        <th scope="col" class="py-3">تاریخ تغییر</th>
+                        <th scope="col" class="py-3 text-center" style="width: 200px;">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody id="searchResultsTbody">
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <!-- Buckets List Table -->
-<div class="card">
+<div class="card" id="bucketsListCard">
     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
         <h5 class="mb-0 fw-bold d-flex align-items-center gap-2">
             <i class="bi bi-folder-fill text-warning"></i> لیست باکت‌های ذخیره‌سازی (Buckets)
@@ -125,9 +211,12 @@
                                     <a asp-controller="Objects" asp-action="Index" asp-route-bucketName="@bucket.Name" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
                                         <i class="bi bi-folder2-open"></i> مرور فایل‌ها
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDeleteBucket('@bucket.Name')">
-                                        <i class="bi bi-trash3"></i>
-                                    </button>
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDeleteBucket('@bucket.Name')">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -139,34 +228,51 @@
     </div>
 </div>
 
-<!-- Modal: Create Bucket -->
-<div class="modal fade" id="createBucketModal" tabindex="-1" aria-labelledby="createBucketModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form asp-controller="Buckets" asp-action="Create" method="post">
-                @Html.AntiForgeryToken()
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold" id="createBucketModalLabel">
-                        <i class="bi bi-folder-plus text-primary"></i> ایجاد باکت جدید
-                    </h5>
-                    <button type="button" class="btn-close ms-0 me-auto" data-bs-dismiss="modal" aria-label="بستن"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="bucketNameInput" class="form-label">نام باکت (Bucket Name)</label>
-                        <input type="text" class="form-control font-monospace" id="bucketNameInput" name="BucketName" placeholder="مثال: my-vod-media" required autofocus>
-                        <div class="form-text small">
-                            قوانین نام‌گذاری: فقط حروف کوچک انگلیسی، اعداد و خط تیره (-) بدون فاصله مجاز است (بین ۳ تا ۶۳ کاراکتر).
+<!-- Modal: Create Bucket (Admin only) -->
+@if (User.IsInRole("Admin"))
+{
+    <div class="modal fade" id="createBucketModal" tabindex="-1" aria-labelledby="createBucketModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-controller="Buckets" asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold" id="createBucketModalLabel">
+                            <i class="bi bi-folder-plus text-primary"></i> ایجاد باکت جدید
+                        </h5>
+                        <button type="button" class="btn-close ms-0 me-auto" data-bs-dismiss="modal" aria-label="بستن"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="bucketNameInput" class="form-label">نام باکت (Bucket Name)</label>
+                            <input type="text" class="form-control font-monospace" id="bucketNameInput" name="BucketName" placeholder="مثال: my-vod-media" required autofocus>
+                            <div class="form-text small">
+                                قوانین نام‌گذاری: فقط حروف کوچک انگلیسی، اعداد و خط تیره (-) بدون فاصله مجاز است (بین ۳ تا ۶۳ کاراکتر).
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
-                    <button type="submit" class="btn btn-primary d-flex align-items-center gap-1">
-                        <i class="bi bi-check-lg"></i> ایجاد باکت
-                    </button>
-                </div>
-            </form>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
+                        <button type="submit" class="btn btn-primary d-flex align-items-center gap-1">
+                            <i class="bi bi-check-lg"></i> ایجاد باکت
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal: Media & File Preview -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-0 shadow-lg">
+            <div class="modal-header border-secondary py-2">
+                <h6 class="modal-title font-monospace text-truncate" id="previewModalLabel" style="max-width: 80%;"></h6>
+                <button type="button" class="btn-close btn-close-white ms-0 me-auto" data-bs-dismiss="modal" aria-label="بستن"></button>
+            </div>
+            <div class="modal-body p-0 text-center d-flex align-items-center justify-content-center bg-black" id="previewContainer" style="min-height: 350px;">
+            </div>
         </div>
     </div>
 </div>
@@ -195,6 +301,180 @@
                     document.getElementById('deleteBucketForm').submit();
                 }
             });
+        }
+
+        async function executeGlobalSearch(event) {
+            if (event) event.preventDefault();
+            const queryInput = document.getElementById('globalSearchInput');
+            const query = queryInput.value.trim();
+            if (!query) return;
+
+            const resultsCard = document.getElementById('searchResultsCard');
+            const spinner = document.getElementById('searchLoadingSpinner');
+            const tableContainer = document.getElementById('searchResultsTableContainer');
+            const tbody = document.getElementById('searchResultsTbody');
+            const queryDisplay = document.getElementById('searchQueryDisplay');
+            const countBadge = document.getElementById('searchResultsCount');
+            const searchBtn = document.getElementById('globalSearchBtn');
+
+            resultsCard.classList.remove('d-none');
+            spinner.classList.remove('d-none');
+            tableContainer.classList.add('d-none');
+            queryDisplay.textContent = query;
+            countBadge.textContent = 'درحال جستجو...';
+            searchBtn.disabled = true;
+
+            resultsCard.scrollIntoView({ behavior: 'smooth' });
+
+            try {
+                const response = await fetch(`/Home/GlobalSearch?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                spinner.classList.add('d-none');
+                tableContainer.classList.remove('d-none');
+
+                if (data.success) {
+                    countBadge.textContent = `${data.count} مورد یافت شد`;
+                    if (data.results.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-muted">
+                            <i class="bi bi-search fs-1 d-block mb-2 text-secondary"></i>
+                            هیچ فایلی با عنوان یا مسیر «${escapeHtml(query)}» در باکت‌ها یافت نشد.
+                        </td></tr>`;
+                    } else {
+                        let rows = '';
+                        data.results.forEach((item, index) => {
+                            const folderPrefix = getParentPrefix(item.key);
+                            const previewBtn = item.isPreviewable ? `
+                                <button type="button" class="btn btn-outline-info" title="پیش‌نمایش" onclick="previewObject('${escapeHtml(item.bucketName)}', '${escapeHtml(item.key)}', '${item.previewType}', '${escapeHtml(item.fileName)}')">
+                                    <i class="bi bi-eye"></i>
+                                </button>` : '';
+
+                            rows += `<tr>
+                                <td class="px-3 text-muted small">${index + 1}</td>
+                                <td>
+                                    <a href="/Objects/Index?bucketName=${encodeURIComponent(item.bucketName)}" class="badge bg-info-subtle text-info-emphasis text-decoration-none font-monospace p-2">
+                                        <i class="bi bi-archive me-1"></i> ${escapeHtml(item.bucketName)}
+                                    </a>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi ${item.iconClass} fs-5"></i>
+                                        <div>
+                                            <span class="font-monospace fw-bold text-dark text-break">${escapeHtml(item.fileName)}</span>
+                                            ${item.folderPath ? `<div class="text-muted font-monospace small" dir="ltr"><i class="bi bi-folder me-1"></i>${escapeHtml(item.folderPath)}/</div>` : ''}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-muted small font-monospace">${item.formattedSize}</td>
+                                <td class="text-muted small font-monospace">${item.lastModified}</td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        ${previewBtn}
+                                        <a href="/Objects/Download?bucketName=${encodeURIComponent(item.bucketName)}&key=${encodeURIComponent(item.key)}" class="btn btn-outline-primary" title="دانلود فایل">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <a href="/Objects/Index?bucketName=${encodeURIComponent(item.bucketName)}&prefix=${encodeURIComponent(folderPrefix)}" class="btn btn-outline-secondary" title="مشاهده در پوشه">
+                                            <i class="bi bi-folder2-open"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>`;
+                        });
+                        tbody.innerHTML = rows;
+                    }
+                } else {
+                    Swal.fire('خطا در جستجو', data.message || 'مشکلی رخ داد', 'error');
+                }
+            } catch (err) {
+                spinner.classList.add('d-none');
+                Swal.fire('خطا', err.message, 'error');
+            } finally {
+                searchBtn.disabled = false;
+            }
+        }
+
+        function clearGlobalSearch() {
+            document.getElementById('searchResultsCard').classList.add('d-none');
+            document.getElementById('globalSearchInput').value = '';
+        }
+
+        function getParentPrefix(key) {
+            const lastSlash = key.lastIndexOf('/');
+            return lastSlash !== -1 ? key.substring(0, lastSlash + 1) : '';
+        }
+
+        // Preview Object handler
+        async function previewObject(bucketName, key, previewType, displayName) {
+            const container = document.getElementById('previewContainer');
+            document.getElementById('previewModalLabel').textContent = displayName;
+            container.innerHTML = '<div class="p-5"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 small text-light">درحال بارگذاری...</div></div>';
+            
+            const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+            modal.show();
+
+            const streamUrl = `/Objects/StreamMedia?bucketName=${encodeURIComponent(bucketName)}&key=${encodeURIComponent(key)}`;
+            const downloadUrl = `/Objects/Download?bucketName=${encodeURIComponent(bucketName)}&key=${encodeURIComponent(key)}`;
+
+            if (previewType === 'image') {
+                container.innerHTML = `<img src="${streamUrl}" class="img-fluid p-2" style="max-height: 75vh; object-fit: contain;" alt="${displayName}">`;
+            } else if (previewType === 'video') {
+                container.innerHTML = `<video controls autoplay class="w-100" style="max-height: 75vh;"><source src="${streamUrl}">مرورگر شما از پخش ویدیو پشتیبانی نمی‌کند.</video>`;
+            } else if (previewType === 'audio') {
+                container.innerHTML = `
+                    <div class="p-4 w-100 text-center" style="max-width: 600px;">
+                        <div class="mb-4">
+                            <div class="d-inline-flex p-4 rounded-circle bg-info bg-opacity-10 text-info mb-3">
+                                <i class="bi bi-music-note-beamed display-3"></i>
+                            </div>
+                            <h5 class="fw-bold text-white text-break font-monospace">${escapeHtml(displayName)}</h5>
+                        </div>
+                        <audio id="activeAudioPlayer" controls autoplay preload="auto" class="w-100 shadow rounded-pill" style="outline: none;">
+                            <source src="${streamUrl}">
+                            مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
+                        </audio>
+                        <div class="mt-4">
+                            <a href="${downloadUrl}" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1">
+                                <i class="bi bi-download"></i> دانلود مستقیم فایل صوتی
+                            </a>
+                        </div>
+                    </div>`;
+            } else if (previewType === 'pdf') {
+                container.innerHTML = `<iframe src="${streamUrl}" class="w-100" style="height: 75vh;" frameborder="0"></iframe>`;
+            } else if (previewType === 'text') {
+                try {
+                    const res = await fetch(`/Objects/GetTextPreview?bucketName=${encodeURIComponent(bucketName)}&key=${encodeURIComponent(key)}`);
+                    const data = await res.json();
+                    if (data.success) {
+                        container.innerHTML = `<pre class="text-start font-monospace text-light p-3 m-0 w-100" style="max-height: 75vh; overflow: auto; white-space: pre-wrap; font-size: 0.85rem;"><code>${escapeHtml(data.content)}</code></pre>`;
+                    } else {
+                        container.innerHTML = `<div class="p-4 text-danger">${data.message}</div>`;
+                    }
+                } catch (e) {
+                    container.innerHTML = `<div class="p-4 text-danger">${e.message}</div>`;
+                }
+            }
+        }
+
+        document.getElementById('previewModal')?.addEventListener('hidden.bs.modal', function () {
+            const container = document.getElementById('previewContainer');
+            if (container) {
+                const mediaEls = container.querySelectorAll('audio, video');
+                mediaEls.forEach(m => {
+                    m.pause();
+                    m.removeAttribute('src');
+                    m.load();
+                });
+                container.innerHTML = '';
+            }
+        });
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
     </script>
 }

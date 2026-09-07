@@ -331,6 +331,63 @@ public class MinioService : IMinioService
         return await reader.ReadToEndAsync();
     }
 
+    public async Task<List<ObjectItemViewModel>> SearchObjectsAcrossBucketsAsync(IEnumerable<string> bucketNames, string query, string? scopedPrefix = null)
+    {
+        var results = new List<ObjectItemViewModel>();
+        if (string.IsNullOrWhiteSpace(query)) return results;
+
+        query = query.Trim();
+
+        foreach (var bucketName in bucketNames)
+        {
+            try
+            {
+                var listArgs = new ListObjectsArgs()
+                    .WithBucket(bucketName)
+                    .WithRecursive(true);
+
+                if (!string.IsNullOrWhiteSpace(scopedPrefix))
+                {
+                    var cleanPrefix = scopedPrefix.Trim().TrimStart('/');
+                    if (!cleanPrefix.EndsWith('/')) cleanPrefix += "/";
+                    listArgs = listArgs.WithPrefix(cleanPrefix);
+                }
+
+                var listEnum = _client.ListObjectsEnumAsync(listArgs);
+                await foreach (var item in listEnum)
+                {
+                    if (item.Key.EndsWith('/')) continue;
+
+                    var fileName = Path.GetFileName(item.Key);
+                    if (item.Key.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                        fileName.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    {
+                        results.Add(new ObjectItemViewModel
+                        {
+                            BucketName = bucketName,
+                            Key = item.Key,
+                            DisplayName = item.Key,
+                            IsDir = false,
+                            Size = (long)item.Size,
+                            LastModified = item.LastModifiedDateTime,
+                            ETag = item.ETag
+                        });
+
+                        if (results.Count >= 500) break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to search in bucket {BucketName}", bucketName);
+            }
+
+            if (results.Count >= 500) break;
+        }
+
+        return results.OrderBy(x => x.BucketName).ThenBy(x => x.Key).ToList();
+    }
+
     private static string? GetParentPrefix(string prefix)
     {
         if (string.IsNullOrEmpty(prefix)) return null;

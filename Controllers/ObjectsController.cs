@@ -120,6 +120,53 @@ public class ObjectsController : Controller
     }
 
     [HttpPost]
+    [RequestSizeLimit(524288000)] // 500 MB limit
+    [RequestFormLimits(MultipartBodyLengthLimit = 524288000)]
+    public async Task<IActionResult> UploadSingle(string bucketName, string? prefix, IFormFile file)
+    {
+        if (string.IsNullOrWhiteSpace(bucketName))
+        {
+            return BadRequest(new { success = false, message = "نام باکت مشخص نشده است." });
+        }
+
+        if (!IsAuthorizedForBucket(bucketName))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { success = false, message = "عدم دسترسی به باکت" });
+        }
+
+        prefix = GetEffectivePrefix(prefix) ?? string.Empty;
+        if (!IsAuthorizedForPrefix(prefix))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { success = false, message = "عدم دسترسی به این پوشه" });
+        }
+
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { success = false, message = "هیچ فایلی برای آپلود انتخاب نشده است." });
+        }
+
+        if (!string.IsNullOrEmpty(prefix) && !prefix.EndsWith('/'))
+        {
+            prefix += "/";
+        }
+
+        string fileName = Path.GetFileName(file.FileName);
+        string objectKey = $"{prefix}{fileName}";
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            var detectedContentType = GetExactMimeType(fileName, file.ContentType);
+            await _minioService.UploadObjectAsync(bucketName, objectKey, stream, file.Length, detectedContentType);
+            return Ok(new { success = true, fileName, size = file.Length });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateFolder(CreateFolderRequest model)
     {

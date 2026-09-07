@@ -18,4 +18,5 @@ public interface IMinioService
     Task DeleteFolderAsync(string bucketName, string folderPrefix);
     Task<string> GetPresignedUrlAsync(string bucketName, string objectKey, int expirySeconds = 86400);
     Task<string> GetObjectTextContentAsync(string bucketName, string objectKey, int maxBytes = 1048576);
+    Task<List<ObjectItemViewModel>> SearchObjectsAcrossBucketsAsync(IEnumerable<string> bucketNames, string query, string? scopedPrefix = null);
 }
