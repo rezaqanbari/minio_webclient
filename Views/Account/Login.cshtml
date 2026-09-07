@@ -1,0 +1,86 @@
+@model minio_csharpClient.Models.LoginViewModel
+@{
+    ViewData["Title"] = "ورود به سامانه مدیریت MinIO";
+    Layout = "_Layout";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="card-header bg-dark text-white text-center py-4">
+                <i class="bi bi-box-seam-fill text-danger display-4 d-block mb-2"></i>
+                <h4 class="fw-bold mb-1">ورود به سامانه MinIO</h4>
+                <div class="text-white-50 small">جهت دسترسی به پنل مدیریت وارد شوید</div>
+            </div>
+
+            <div class="card-body p-4 bg-white">
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger py-2 small mb-3">
+                        <div asp-validation-summary="All" class="mb-0"></div>
+                    </div>
+                }
+
+                <form asp-controller="Account" asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label asp-for="Username" class="form-label small fw-bold text-muted"></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
+                            <input asp-for="Username" class="form-control border-start-0 font-monospace" placeholder="نام کاربری" autofocus required />
+                        </div>
+                        <span asp-validation-for="Username" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label small fw-bold text-muted"></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
+                            <input asp-for="Password" type="password" id="passwordInput" class="form-control border-start-0 border-end-0 font-monospace" placeholder="رمز عبور" required />
+                            <button class="btn btn-outline-secondary border-start-0 bg-light" type="button" onclick="togglePasswordVisibility()">
+                                <i class="bi bi-eye" id="togglePasswordIcon"></i>
+                            </button>
+                        </div>
+                        <span asp-validation-for="Password" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-check mb-4">
+                        <input asp-for="RememberMe" class="form-check-input" type="checkbox" id="rememberMeCheck">
+                        <label class="form-check-label small text-muted cursor-pointer" for="rememberMeCheck">
+                            مرا به خاطر بسپار
+                        </label>
+                    </div>
+
+                    <div class="d-grid mb-2">
+                        <button type="submit" class="btn btn-primary btn-lg fs-6 fw-bold py-2 d-flex align-items-center justify-content-center gap-2">
+                            <i class="bi bi-box-arrow-in-right"></i> ورود به پنل
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer bg-light text-center py-3 border-0 text-muted small">
+                <span>سامانه اختصاصی ذخیره‌سازی داده ابری MinIO</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('passwordInput');
+            const icon = document.getElementById('togglePasswordIcon');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                passwordInput.type === 'password';
+                passwordInput.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
+        }
+    </script>
+}

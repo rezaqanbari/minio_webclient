@@ -71,18 +71,25 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarContent">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item">
-                            <a class="nav-link text-white-50 active d-flex align-items-center gap-1" asp-controller="Home" asp-action="Index">
-                                <i class="bi bi-speedometer2"></i> داشبورد
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white-50 d-flex align-items-center gap-1" asp-controller="Buckets" asp-action="Index">
-                                <i class="bi bi-archive-fill"></i> مدیریت باکت‌ها
-                            </a>
-                        </li>
-                    </ul>
+                    @if (User.Identity != null && User.Identity.IsAuthenticated)
+                    {
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                            <li class="nav-item">
+                                <a class="nav-link text-white-50 active d-flex align-items-center gap-1" asp-controller="Home" asp-action="Index">
+                                    <i class="bi bi-speedometer2"></i> داشبورد
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-white-50 d-flex align-items-center gap-1" asp-controller="Buckets" asp-action="Index">
+                                    <i class="bi bi-archive-fill"></i> مدیریت باکت‌ها
+                                </a>
+                            </li>
+                        </ul>
+                    }
+                    else
+                    {
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0"></ul>
+                    }
 @inject Microsoft.Extensions.Options.IOptions<minio_csharpClient.Models.MinioOptions> MinioOptionsAccessor
                     <div class="d-flex align-items-center gap-3">
                         <span class="text-white-50 small font-monospace d-none d-md-inline">
@@ -91,6 +98,18 @@
                         <span class="badge bg-success bg-opacity-25 text-success border border-success-subtle px-3 py-2 rounded-pill">
                             <i class="bi bi-shield-check"></i> SSL امن
                         </span>
+                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                        {
+                            <span class="badge bg-secondary bg-opacity-50 text-white font-monospace px-3 py-2 rounded-pill">
+                                <i class="bi bi-person-fill"></i> @User.Identity.Name
+                            </span>
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline m-0">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1" title="خروج از حساب">
+                                    <i class="bi bi-box-arrow-left"></i> خروج
+                                </button>
+                            </form>
+                        }
                     </div>
                 </div>
             </div>

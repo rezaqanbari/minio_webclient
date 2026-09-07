@@ -493,7 +493,34 @@
             } else if (previewType === 'video') {
                 container.innerHTML = `<video controls autoplay class="w-100" style="max-height: 75vh;"><source src="${streamUrl}">مرورگر شما از پخش ویدیو پشتیبانی نمی‌کند.</video>`;
             } else if (previewType === 'audio') {
-                container.innerHTML = `<div class="p-5 text-center"><i class="bi bi-music-note-beamed display-1 text-info d-block mb-3"></i><audio controls autoplay class="w-75"><source src="${streamUrl}">مرورگر شما از پخش صوت پشتیبانی نمی‌کند.</audio></div>`;
+                container.innerHTML = `
+                    <div class="p-4 w-100 text-center" style="max-width: 600px;">
+                        <div class="mb-4">
+                            <div class="d-inline-flex p-4 rounded-circle bg-info bg-opacity-10 text-info mb-3">
+                                <i class="bi bi-music-note-beamed display-3"></i>
+                            </div>
+                            <h5 class="fw-bold text-white text-break font-monospace">${escapeHtml(displayName)}</h5>
+                        </div>
+                        <audio id="activeAudioPlayer" controls autoplay preload="auto" class="w-100 shadow rounded-pill" style="outline: none;">
+                            <source src="${streamUrl}">
+                            مرورگر شما از پخش صوت پشتیبانی نمی‌کند.
+                        </audio>
+                        <div id="audioErrorNotice" class="alert alert-warning py-2 small mt-3 d-none">
+                            <i class="bi bi-exclamation-triangle"></i> مرورگر قادر به دکود این فرمت صوتی نیست. می‌توانید آن را مستقیماً دانلود کنید.
+                        </div>
+                        <div class="mt-4">
+                            <a href="${streamUrl}" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1">
+                                <i class="bi bi-download"></i> دانلود مستقیم فایل صوتی
+                            </a>
+                        </div>
+                    </div>`;
+
+                const audioEl = document.getElementById('activeAudioPlayer');
+                if (audioEl) {
+                    audioEl.onerror = function() {
+                        document.getElementById('audioErrorNotice')?.classList.remove('d-none');
+                    };
+                }
             } else if (previewType === 'pdf') {
                 container.innerHTML = `<iframe src="${streamUrl}" class="w-100" style="height: 75vh;" frameborder="0"></iframe>`;
             } else if (previewType === 'text') {
@@ -510,6 +537,20 @@
                 }
             }
         }
+
+        // Stop media playback when modal is closed
+        document.getElementById('previewModal')?.addEventListener('hidden.bs.modal', function () {
+            const container = document.getElementById('previewContainer');
+            if (container) {
+                const mediaEls = container.querySelectorAll('audio, video');
+                mediaEls.forEach(m => {
+                    m.pause();
+                    m.removeAttribute('src');
+                    m.load();
+                });
+                container.innerHTML = '';
+            }
+        });
 
         function escapeHtml(text) {
             return text

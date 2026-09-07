@@ -75,7 +75,8 @@ public class ObjectsController : Controller
             try
             {
                 using var stream = file.OpenReadStream();
-                await _minioService.UploadObjectAsync(bucketName, objectKey, stream, file.Length, file.ContentType);
+                var detectedContentType = GetExactMimeType(fileName, file.ContentType);
+                await _minioService.UploadObjectAsync(bucketName, objectKey, stream, file.Length, detectedContentType);
                 successCount++;
             }
             catch (Exception ex)
@@ -149,13 +150,64 @@ public class ObjectsController : Controller
 
         try
         {
-            var (stream, contentType, _) = await _minioService.DownloadObjectAsync(bucketName, key);
-            return File(stream, contentType, enableRangeProcessing: true);
+            var (stream, contentType, fileName) = await _minioService.DownloadObjectAsync(bucketName, key);
+            var mimeType = GetExactMimeType(fileName, contentType);
+
+            Response.Headers.Append("Accept-Ranges", "bytes");
+            Response.Headers.Append("Content-Disposition", "inline; filename=\"" + Uri.EscapeDataString(fileName) + "\"");
+
+            return File(stream, mimeType, enableRangeProcessing: true);
         }
         catch (Exception ex)
         {
             return StatusCode(500, ex.Message);
         }
+    }
+
+    public static string GetExactMimeType(string fileName, string? defaultType = null)
+    {
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        return ext switch
+        {
+            // Audio
+            ".mp3" => "audio/mpeg",
+            ".wav" => "audio/wav",
+            ".ogg" or ".oga" => "audio/ogg",
+            ".aac" => "audio/aac",
+            ".m4a" => "audio/mp4",
+            ".flac" => "audio/flac",
+            ".weba" => "audio/webm",
+            ".opus" => "audio/opus",
+            ".wma" => "audio/x-ms-wma",
+
+            // Video
+            ".mp4" or ".m4v" => "video/mp4",
+            ".webm" => "video/webm",
+            ".ogv" => "video/ogg",
+            ".mov" => "video/quicktime",
+            ".mkv" => "video/x-matroska",
+            ".ts" => "video/mp2t",
+
+            // Images
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".svg" => "image/svg+xml",
+            ".bmp" => "image/bmp",
+            ".ico" => "image/x-icon",
+
+            // Documents
+            ".pdf" => "application/pdf",
+            ".json" => "application/json",
+            ".txt" or ".log" => "text/plain; charset=utf-8",
+            ".csv" => "text/csv; charset=utf-8",
+            ".xml" => "application/xml",
+
+            _ => !string.IsNullOrWhiteSpace(defaultType) && defaultType != "application/octet-stream"
+                ? defaultType
+                : "application/octet-stream"
+        };
     }
 
     [HttpGet]

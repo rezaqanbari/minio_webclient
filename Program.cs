@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using minio_csharpClient.Models;
 using minio_csharpClient.Services;
@@ -25,6 +27,18 @@ builder.Services.Configure<MinioOptions>(options =>
     if (!string.IsNullOrWhiteSpace(envRegion)) options.Region = envRegion;
 });
 
+// Configure Authentication Credentials
+builder.Services.Configure<AuthOptions>(options =>
+{
+    builder.Configuration.GetSection(AuthOptions.SectionName).Bind(options);
+
+    var envUser = Environment.GetEnvironmentVariable("AUTH_USERNAME");
+    if (!string.IsNullOrWhiteSpace(envUser)) options.Username = envUser;
+
+    var envPass = Environment.GetEnvironmentVariable("AUTH_PASSWORD");
+    if (!string.IsNullOrWhiteSpace(envPass)) options.Password = envPass;
+});
+
 // Register MinIO Service
 builder.Services.AddSingleton<IMinioService, MinioService>();
 
@@ -32,6 +46,27 @@ builder.Services.AddSingleton<IMinioService, MinioService>();
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 524288000;
+});
+
+// Cookie Authentication
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
+        options.AccessDeniedPath = "/Account/Login";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+    });
+
+// Fallback Authorization Policy (protect all pages by default unless marked [AllowAnonymous])
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
 });
 
 // Add MVC
@@ -49,6 +84,8 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

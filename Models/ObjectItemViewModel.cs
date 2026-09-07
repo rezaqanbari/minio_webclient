@@ -27,8 +27,8 @@ public class ObjectItemViewModel
             return Extension switch
             {
                 ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".svg" or ".bmp" => "bi-file-earmark-image-fill text-primary",
-                ".mp4" or ".webm" or ".mkv" or ".avi" or ".mov" or ".ts" or ".m3u8" => "bi-file-earmark-play-fill text-danger",
-                ".mp3" or ".wav" or ".ogg" or ".aac" or ".flac" or ".m4a" => "bi-file-earmark-music-fill text-info",
+                ".mp4" or ".webm" or ".mkv" or ".avi" or ".mov" or ".ts" or ".m3u8" or ".m4v" => "bi-file-earmark-play-fill text-danger",
+                ".mp3" or ".wav" or ".ogg" or ".aac" or ".flac" or ".m4a" or ".opus" or ".weba" => "bi-file-earmark-music-fill text-info",
                 ".pdf" => "bi-file-earmark-pdf-fill text-danger",
                 ".zip" or ".rar" or ".7z" or ".tar" or ".gz" => "bi-file-earmark-zip-fill text-secondary",
                 ".txt" or ".md" or ".json" or ".xml" or ".csv" or ".log" => "bi-file-earmark-text-fill text-success",
@@ -46,11 +46,11 @@ public class ObjectItemViewModel
             if (IsDir) return "none";
             return Extension switch
             {
-                ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".svg" => "image",
-                ".mp4" or ".webm" or ".mov" => "video",
-                ".mp3" or ".wav" or ".ogg" or ".aac" => "audio",
+                ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".svg" or ".bmp" or ".ico" => "image",
+                ".mp4" or ".webm" or ".mov" or ".m4v" => "video",
+                ".mp3" or ".wav" or ".ogg" or ".aac" or ".m4a" or ".flac" or ".opus" or ".weba" => "audio",
                 ".pdf" => "pdf",
-                ".txt" or ".json" or ".xml" or ".log" or ".md" or ".csv" => "text",
+                ".txt" or ".json" or ".xml" or ".log" or ".md" or ".csv" or ".sql" or ".yml" or ".yaml" => "text",
                 _ => "none"
             };
         }
