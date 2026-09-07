@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.WebUtilities;
 using minio_csharpClient.Models;
 using minio_csharpClient.Services;
 
@@ -48,7 +50,7 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartBodyLengthLimit = 524288000;
 });
 
-// Cookie Authentication
+// Cookie Authentication with RELATIVE redirects (prevents redirecting to localhost behind reverse proxies)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -59,6 +61,24 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
+
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToLogin = context =>
+            {
+                var returnUrl = context.Request.Path + context.Request.QueryString;
+                var loginUrl = QueryHelpers.AddQueryString(options.LoginPath.ToString(), options.ReturnUrlParameter, returnUrl);
+                context.Response.Headers.Location = loginUrl;
+                context.Response.StatusCode = StatusCodes.Status302Found;
+                return Task.CompletedTask;
+            },
+            OnRedirectToAccessDenied = context =>
+            {
+                context.Response.Headers.Location = options.AccessDeniedPath.ToString();
+                context.Response.StatusCode = StatusCodes.Status302Found;
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Fallback Authorization Policy (protect all pages by default unless marked [AllowAnonymous])
@@ -74,14 +94,21 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
+// Configure Forwarded Headers for Nginx / Reverse Proxy / Dynamic Domains
+var forwardedHeadersOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.All
+};
+forwardedHeadersOptions.KnownNetworks.Clear();
+forwardedHeadersOptions.KnownProxies.Clear();
+app.UseForwardedHeaders(forwardedHeadersOptions);
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
 }
 
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 

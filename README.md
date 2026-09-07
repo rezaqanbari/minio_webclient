@@ -131,3 +131,32 @@ dotnet run --launch-profile http
 
 ### با Visual Studio / Rider:
 فایل پروژه `minio_csharpClient.csproj` را باز کرده و دکمه **Run / Debug (F5)** را بزنید.
+
+---
+
+## 🌐 تنظیم پشت Nginx (Reverse Proxy و دامنه اختصاصی)
+
+اگر قصد دارید برنامه‌تان را با دامنه‌ای مانند `minio.yourdomain.com` پشت Nginx قرار دهید، این کانفیگ نمونه را در سرور قرار دهید:
+
+```nginx
+server {
+    listen 80;
+    server_name minio.yourdomain.com;
+
+    # سقف مجاز برای آپلود فایل‌های حجیم
+    client_max_body_size 500M;
+
+    location / {
+        proxy_pass         http://127.0.0.1:9000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade $http_upgrade;
+        proxy_set_header   Connection keep-alive;
+        proxy_set_header   Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_set_header   X-Forwarded-Host $host;
+    }
+}
+```
+> سامانه مجهز به ریدایرکت‌های نسبی (Relative Redirects) و Forwarded Headers است؛ بنابراین با هر دامنه‌ای، با SSL یا بدون SSL، بدون ریدایرکت به localhost کار خواهد کرد.
