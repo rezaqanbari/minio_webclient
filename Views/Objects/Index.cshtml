@@ -493,6 +493,7 @@
             } else if (previewType === 'video') {
                 container.innerHTML = `<video controls autoplay class="w-100" style="max-height: 75vh;"><source src="${streamUrl}">مرورگر شما از پخش ویدیو پشتیبانی نمی‌کند.</video>`;
             } else if (previewType === 'audio') {
+                const downloadUrl = `/Objects/Download?bucketName=${encodeURIComponent(bucketName)}&key=${encodeURIComponent(key)}`;
                 container.innerHTML = `
                     <div class="p-4 w-100 text-center" style="max-width: 600px;">
                         <div class="mb-4">
@@ -509,7 +510,7 @@
                             <i class="bi bi-exclamation-triangle"></i> مرورگر قادر به دکود این فرمت صوتی نیست. می‌توانید آن را مستقیماً دانلود کنید.
                         </div>
                         <div class="mt-4">
-                            <a href="${streamUrl}" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1">
+                            <a href="${downloadUrl}" class="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1">
                                 <i class="bi bi-download"></i> دانلود مستقیم فایل صوتی
                             </a>
                         </div>

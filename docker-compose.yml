@@ -8,12 +8,14 @@ services:
     ports:
       - "${PORT_API:-9000}:8080"
       - "${PORT_CONSOLE:-9001}:8080"
+    volumes:
+      - ./data:/app/data
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - MINIO_ENDPOINT=${MINIO_ENDPOINT:-your-minio-server.com}
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-YOUR_MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-YOUR_MINIO_SECRET_KEY}
       - MINIO_WITH_SSL=${MINIO_WITH_SSL:-true}
-      - MINIO_REGION=${MINIO_REGION:-}
+      - MINIO_REGION=${MINIO_REGION:-us-east-1}
       - AUTH_USERNAME=${AUTH_USERNAME:-admin}
       - AUTH_PASSWORD=${AUTH_PASSWORD:-Admin@123456}

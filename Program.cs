@@ -1,12 +1,36 @@
+using System;
+using System.IO;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using minio_csharpClient.Data;
 using minio_csharpClient.Models;
 using minio_csharpClient.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure SQLite Database
+var dbDirectory = Path.Combine(builder.Environment.ContentRootPath, "data");
+if (!Directory.Exists(dbDirectory))
+{
+    Directory.CreateDirectory(dbDirectory);
+}
+var dbPath = Path.Combine(dbDirectory, "app.db");
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseSqlite($"Data Source={dbPath}");
+});
+
+// Register User Service
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Configure MinIO Options (from appsettings and environment variables)
 builder.Services.Configure<MinioOptions>(options =>
@@ -29,7 +53,7 @@ builder.Services.Configure<MinioOptions>(options =>
     if (!string.IsNullOrWhiteSpace(envRegion)) options.Region = envRegion;
 });
 
-// Configure Authentication Credentials
+// Configure Authentication Credentials (used for initial admin seeding fallback)
 builder.Services.Configure<AuthOptions>(options =>
 {
     builder.Configuration.GetSection(AuthOptions.SectionName).Bind(options);
@@ -93,6 +117,17 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
+
+// Ensure Database is initialized and Seed Default Admin
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+
+    var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+    var authOptions = scope.ServiceProvider.GetRequiredService<IOptions<AuthOptions>>().Value;
+    userService.SeedDefaultAdminAsync(authOptions.Username, authOptions.Password).GetAwaiter().GetResult();
+}
 
 // Configure Forwarded Headers for Nginx / Reverse Proxy / Dynamic Domains
 var forwardedHeadersOptions = new ForwardedHeadersOptions

@@ -8,6 +8,12 @@
 appsettings.Development.json
 appsettings.*.local.json
 
+# SQLite Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
 # User-specific files
 *.rsuser
 *.suo

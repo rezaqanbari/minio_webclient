@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using minio_csharpClient.Models;
@@ -9,6 +11,7 @@ using minio_csharpClient.Services;
 
 namespace minio_csharpClient.Controllers;
 
+[Authorize]
 public class ObjectsController : Controller
 {
     private readonly IMinioService _minioService;
@@ -27,9 +30,17 @@ public class ObjectsController : Controller
             return RedirectToAction("Index", "Buckets");
         }
 
+        if (!IsAuthorizedForBucket(bucketName))
+        {
+            return Forbid();
+        }
+
+        prefix = GetEffectivePrefix(prefix);
+
         try
         {
             var model = await _minioService.GetBucketContentAsync(bucketName, prefix);
+            ApplyPrefixScopingToModel(model);
             return View(model);
         }
         catch (Exception ex)
@@ -50,13 +61,23 @@ public class ObjectsController : Controller
             return RedirectToAction("Index", "Buckets");
         }
 
+        if (!IsAuthorizedForBucket(bucketName))
+        {
+            return Forbid();
+        }
+
+        prefix = GetEffectivePrefix(prefix) ?? string.Empty;
+        if (!IsAuthorizedForPrefix(prefix))
+        {
+            return Forbid();
+        }
+
         if (files == null || files.Count == 0)
         {
             TempData["Error"] = "هیچ فایلی برای آپلود انتخاب نشده است.";
             return RedirectToAction(nameof(Index), new { bucketName, prefix });
         }
 
-        prefix ??= string.Empty;
         if (!string.IsNullOrEmpty(prefix) && !prefix.EndsWith('/'))
         {
             prefix += "/";
@@ -89,6 +110,7 @@ public class ObjectsController : Controller
         {
             TempData["Success"] = $"{successCount} فایل با موفقیت آپلود شد.";
         }
+
         if (errors.Count > 0)
         {
             TempData["Error"] = string.Join("<br/>", errors);
@@ -101,23 +123,40 @@ public class ObjectsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateFolder(CreateFolderRequest model)
     {
-        if (string.IsNullOrWhiteSpace(model.BucketName) || string.IsNullOrWhiteSpace(model.FolderName))
+        if (string.IsNullOrWhiteSpace(model.BucketName))
         {
-            TempData["Error"] = "نام پوشه یا باکت نامعتبر است.";
-            return RedirectToAction(nameof(Index), new { bucketName = model.BucketName, prefix = model.CurrentPrefix });
+            TempData["Error"] = "نام باکت مشخص نشده است.";
+            return RedirectToAction("Index", "Buckets");
+        }
+
+        if (!IsAuthorizedForBucket(model.BucketName))
+        {
+            return Forbid();
+        }
+
+        var effectivePrefix = GetEffectivePrefix(model.CurrentPrefix) ?? string.Empty;
+        if (!IsAuthorizedForPrefix(effectivePrefix))
+        {
+            return Forbid();
+        }
+
+        if (string.IsNullOrWhiteSpace(model.FolderName))
+        {
+            TempData["Error"] = "نام پوشه نمی‌تواند خالی باشد.";
+            return RedirectToAction(nameof(Index), new { bucketName = model.BucketName, prefix = effectivePrefix });
         }
 
         try
         {
-            await _minioService.CreateFolderAsync(model.BucketName, model.CurrentPrefix, model.FolderName);
-            TempData["Success"] = $"پوشه '{model.FolderName}' با موفقیت ایجاد شد.";
+            await _minioService.CreateFolderAsync(model.BucketName, effectivePrefix, model.FolderName);
+            TempData["Success"] = $"پوشه '{model.FolderName}' با موفقیت ساخته شد.";
         }
         catch (Exception ex)
         {
             TempData["Error"] = $"خطا در ایجاد پوشه: {ex.Message}";
         }
 
-        return RedirectToAction(nameof(Index), new { bucketName = model.BucketName, prefix = model.CurrentPrefix });
+        return RedirectToAction(nameof(Index), new { bucketName = model.BucketName, prefix = effectivePrefix });
     }
 
     [HttpGet]
@@ -126,6 +165,11 @@ public class ObjectsController : Controller
         if (string.IsNullOrWhiteSpace(bucketName) || string.IsNullOrWhiteSpace(key))
         {
             return BadRequest("پارامترهای درخواست ناقص است.");
+        }
+
+        if (!IsAuthorizedForBucket(bucketName) || !IsAuthorizedForPrefix(key))
+        {
+            return Forbid();
         }
 
         try
@@ -146,6 +190,11 @@ public class ObjectsController : Controller
         if (string.IsNullOrWhiteSpace(bucketName) || string.IsNullOrWhiteSpace(key))
         {
             return BadRequest();
+        }
+
+        if (!IsAuthorizedForBucket(bucketName) || !IsAuthorizedForPrefix(key))
+        {
+            return Forbid();
         }
 
         try
@@ -213,6 +262,11 @@ public class ObjectsController : Controller
     [HttpGet]
     public async Task<IActionResult> GetTextPreview(string bucketName, string key)
     {
+        if (!IsAuthorizedForBucket(bucketName) || !IsAuthorizedForPrefix(key))
+        {
+            return Forbid();
+        }
+
         try
         {
             var text = await _minioService.GetObjectTextContentAsync(bucketName, key);
@@ -232,6 +286,11 @@ public class ObjectsController : Controller
             return BadRequest(new { success = false, message = "پارامترهای درخواست نامعتبر است." });
         }
 
+        if (!IsAuthorizedForBucket(request.BucketName) || !IsAuthorizedForPrefix(request.ObjectName))
+        {
+            return Forbid();
+        }
+
         try
         {
             int expirySeconds = Math.Clamp(request.ExpiryHours, 1, 168) * 3600; // max 7 days
@@ -248,6 +307,11 @@ public class ObjectsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(string bucketName, string key, string? prefix)
     {
+        if (!IsAuthorizedForBucket(bucketName) || !IsAuthorizedForPrefix(key))
+        {
+            return Forbid();
+        }
+
         try
         {
             await _minioService.DeleteObjectAsync(bucketName, key);
@@ -265,6 +329,11 @@ public class ObjectsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteFolder(string bucketName, string folderPrefix, string? prefix)
     {
+        if (!IsAuthorizedForBucket(bucketName) || !IsAuthorizedForPrefix(folderPrefix))
+        {
+            return Forbid();
+        }
+
         try
         {
             await _minioService.DeleteFolderAsync(bucketName, folderPrefix);
@@ -277,4 +346,96 @@ public class ObjectsController : Controller
 
         return RedirectToAction(nameof(Index), new { bucketName, prefix });
     }
+
+    #region Scope Authorization Helpers
+
+    private bool IsAuthorizedForBucket(string bucketName)
+    {
+        if (User.IsInRole("Admin")) return true;
+        var allowedBucket = User.FindFirst("AllowedBucket")?.Value;
+        return !string.IsNullOrWhiteSpace(allowedBucket) &&
+               string.Equals(allowedBucket, bucketName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsAuthorizedForPrefix(string? prefixOrKey)
+    {
+        if (User.IsInRole("Admin")) return true;
+        var allowedPrefix = User.FindFirst("AllowedPrefix")?.Value;
+        if (string.IsNullOrWhiteSpace(allowedPrefix)) return true; // Scoped to entire bucket
+
+        if (string.IsNullOrWhiteSpace(prefixOrKey)) return false; // Cannot access bucket root if scoped to a subfolder
+
+        var normAllowed = allowedPrefix.Trim().TrimStart('/');
+        if (!normAllowed.EndsWith('/')) normAllowed += "/";
+
+        var normTarget = prefixOrKey.Trim().TrimStart('/');
+        return normTarget.StartsWith(normAllowed, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string? GetEffectivePrefix(string? requestedPrefix)
+    {
+        if (User.IsInRole("Admin")) return requestedPrefix;
+        var allowedPrefix = User.FindFirst("AllowedPrefix")?.Value;
+        if (string.IsNullOrWhiteSpace(allowedPrefix)) return requestedPrefix;
+
+        if (string.IsNullOrWhiteSpace(requestedPrefix) || !IsAuthorizedForPrefix(requestedPrefix))
+        {
+            return allowedPrefix;
+        }
+
+        return requestedPrefix;
+    }
+
+    private void ApplyPrefixScopingToModel(BucketContentViewModel model)
+    {
+        if (User.IsInRole("Admin")) return;
+        var allowedPrefix = User.FindFirst("AllowedPrefix")?.Value;
+        if (string.IsNullOrWhiteSpace(allowedPrefix)) return;
+
+        var normAllowed = allowedPrefix.Trim().TrimStart('/');
+        if (!normAllowed.EndsWith('/')) normAllowed += "/";
+
+        // Disable parent navigation if already at allowed root prefix
+        var normCurrent = model.CurrentPrefix.TrimStart('/');
+        if (string.Equals(normCurrent, normAllowed, StringComparison.OrdinalIgnoreCase))
+        {
+            model.ParentPrefix = null;
+        }
+        else if (model.ParentPrefix != null)
+        {
+            var normParent = model.ParentPrefix.TrimStart('/');
+            if (!normParent.StartsWith(normAllowed, StringComparison.OrdinalIgnoreCase) &&
+                !normParent.Equals(normAllowed.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+            {
+                model.ParentPrefix = normAllowed;
+            }
+        }
+
+        // Adjust breadcrumbs to not expose parents above allowedPrefix
+        var scopedBreadcrumbs = new List<BreadcrumbItem>();
+        foreach (var b in model.Breadcrumbs)
+        {
+            if (string.IsNullOrEmpty(b.Prefix))
+            {
+                // Root bucket breadcrumb: if user is restricted to a prefix, link root breadcrumb to that prefix
+                scopedBreadcrumbs.Add(new BreadcrumbItem
+                {
+                    Title = normAllowed.TrimEnd('/'),
+                    Prefix = normAllowed,
+                    IsActive = string.Equals(normCurrent, normAllowed, StringComparison.OrdinalIgnoreCase)
+                });
+            }
+            else if (b.Prefix.StartsWith(normAllowed, StringComparison.OrdinalIgnoreCase))
+            {
+                scopedBreadcrumbs.Add(b);
+            }
+        }
+
+        if (scopedBreadcrumbs.Count > 0)
+        {
+            model.Breadcrumbs = scopedBreadcrumbs;
+        }
+    }
+
+    #endregion
 }

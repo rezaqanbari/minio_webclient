@@ -10,9 +10,12 @@
         </h4>
         <div class="text-muted small">مشاهده، ایجاد و حذف مخازن ذخیره‌سازی ابری MinIO</div>
     </div>
-    <button type="button" class="btn btn-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createBucketModal">
-        <i class="bi bi-plus-lg"></i> باکت جدید
-    </button>
+    @if (User.IsInRole("Admin"))
+    {
+        <button type="button" class="btn btn-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#createBucketModal">
+            <i class="bi bi-plus-lg"></i> باکت جدید
+        </button>
+    }
 </div>
 
 <div class="card mb-4">
@@ -74,12 +77,15 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group" role="group">
-                                    <a asp-controller="Objects" asp-action="Index" asp-route-bucketName="@bucket.Name" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
+                                    <a asp-controller="Objects" asp-action="Index" asp-route-bucketName="@bucket.Name" asp-route-prefix="@ViewData["AllowedPrefix"]" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1">
                                         <i class="bi bi-folder2-open"></i> مرور و مدیریت فایل‌ها
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" title="حذف باکت" onclick="confirmDeleteBucket('@bucket.Name')">
-                                        <i class="bi bi-trash3"></i>
-                                    </button>
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-danger" title="حذف باکت" onclick="confirmDeleteBucket('@bucket.Name')">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    }
                                 </div>
                             </td>
                         </tr>

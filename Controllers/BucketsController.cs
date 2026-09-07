@@ -1,12 +1,16 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using minio_csharpClient.Models;
 using minio_csharpClient.Services;
 
 namespace minio_csharpClient.Controllers;
 
+[Authorize]
 public class BucketsController : Controller
 {
     private readonly IMinioService _minioService;
@@ -21,6 +25,23 @@ public class BucketsController : Controller
         try
         {
             var buckets = await _minioService.GetBucketsAsync();
+
+            if (!User.IsInRole("Admin"))
+            {
+                var allowedBucket = User.FindFirst("AllowedBucket")?.Value;
+                if (string.IsNullOrWhiteSpace(allowedBucket))
+                {
+                    TempData["Error"] = "هیچ باکتی برای حساب کاربری شما تعریف نشده است. لطفاً با مدیر سیستم تماس بگیرید.";
+                    return View(new List<BucketViewModel>());
+                }
+
+                buckets = buckets.Where(b => b.Name.Equals(allowedBucket, StringComparison.OrdinalIgnoreCase)).ToList();
+
+                var allowedPrefix = User.FindFirst("AllowedPrefix")?.Value;
+                // If user only has access to one bucket and has a specific prefix, they can jump directly or view it
+                ViewData["AllowedPrefix"] = allowedPrefix;
+            }
+
             return View(buckets);
         }
         catch (Exception ex)
@@ -32,6 +53,7 @@ public class BucketsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create(CreateBucketRequest model)
     {
         if (string.IsNullOrWhiteSpace(model.BucketName))
@@ -64,6 +86,7 @@ public class BucketsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(string bucketName)
     {
         if (string.IsNullOrWhiteSpace(bucketName))

@@ -6,18 +6,18 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using minio_csharpClient.Models;
+using minio_csharpClient.Services;
 
 namespace minio_csharpClient.Controllers;
 
 public class AccountController : Controller
 {
-    private readonly AuthOptions _authOptions;
+    private readonly IUserService _userService;
 
-    public AccountController(IOptions<AuthOptions> authOptions)
+    public AccountController(IUserService userService)
     {
-        _authOptions = authOptions.Value;
+        _userService = userService;
     }
 
     [AllowAnonymous]
@@ -45,17 +45,25 @@ public class AccountController : Controller
             return View(model);
         }
 
-        // Compare credentials securely
-        bool isUsernameValid = string.Equals(model.Username.Trim(), _authOptions.Username.Trim(), StringComparison.Ordinal);
-        bool isPasswordValid = string.Equals(model.Password, _authOptions.Password, StringComparison.Ordinal);
-
-        if (isUsernameValid && isPasswordValid)
+        var user = await _userService.AuthenticateAsync(model.Username, model.Password);
+        if (user != null)
         {
             var claims = new List<Claim>
             {
-                new(ClaimTypes.Name, model.Username),
-                new(ClaimTypes.Role, "Admin")
+                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(ClaimTypes.Name, user.Username),
+                new(ClaimTypes.Role, user.Role)
             };
+
+            if (!string.IsNullOrWhiteSpace(user.AllowedBucket))
+            {
+                claims.Add(new Claim("AllowedBucket", user.AllowedBucket));
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.AllowedPrefix))
+            {
+                claims.Add(new Claim("AllowedPrefix", user.AllowedPrefix));
+            }
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
@@ -71,7 +79,7 @@ public class AccountController : Controller
             return RedirectToLocal(returnUrl);
         }
 
-        ModelState.AddModelError(string.Empty, "نام کاربری یا رمز عبور وارد شده نادرست است.");
+        ModelState.AddModelError(string.Empty, "نام کاربری یا رمز عبور اشتباه است یا حساب کاربری غیرفعال می‌باشد.");
         return View(model);
     }
 
@@ -82,6 +90,40 @@ public class AccountController : Controller
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return RedirectToAction(nameof(Login));
+    }
+
+    [HttpGet]
+    [Authorize]
+    public IActionResult ChangePassword()
+    {
+        return View(new ChangePasswordViewModel());
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+        {
+            return RedirectToAction(nameof(Login));
+        }
+
+        var result = await _userService.ChangePasswordAsync(username, model.CurrentPassword, model.NewPassword);
+        if (result.Success)
+        {
+            TempData["SuccessMessage"] = "رمز عبور شما با موفقیت تغییر یافت.";
+            return RedirectToAction("Index", "Home");
+        }
+
+        ModelState.AddModelError(string.Empty, result.ErrorMessage ?? "خطایی رخ داد.");
+        return View(model);
     }
 
     private IActionResult RedirectToLocal(string? returnUrl)

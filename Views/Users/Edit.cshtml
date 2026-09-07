@@ -1,0 +1,113 @@
+@model minio_csharpClient.Models.EditUserViewModel
+@{
+    ViewData["Title"] = "ویرایش کاربر";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white py-3 border-bottom">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-pencil-square text-primary fs-4"></i>
+                        <h5 class="fw-bold mb-0">ویرایش اطلاعات و دسترسی کاربر</h5>
+                    </div>
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-right"></i> بازگشت
+                    </a>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger py-2 small mb-3">
+                        <div asp-validation-summary="All" class="mb-0"></div>
+                    </div>
+                }
+
+                <form asp-action="Edit" method="post" id="editUserForm">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="Username" />
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">نام کاربری</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-person text-muted"></i></span>
+                            <input class="form-control font-monospace bg-light" value="@Model.Username" readonly disabled />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Role" class="form-label small fw-bold text-muted"></label>
+                        <select asp-for="Role" class="form-select" id="roleSelect">
+                            <option value="User">کاربر عادی (محدود به باکت یا پوشه مشخص)</option>
+                            <option value="Admin">مدیر سیستم (دسترسی کامل به تمام باکت‌ها و تنظیمات)</option>
+                        </select>
+                        <span asp-validation-for="Role" class="text-danger small"></span>
+                    </div>
+
+                    <div id="userScopeSection" class="p-3 bg-light rounded-3 mb-4">
+                        <h6 class="fw-bold mb-3 text-primary d-flex align-items-center gap-2">
+                            <i class="bi bi-shield-lock"></i> محدوده دسترسی کاربر عادی
+                        </h6>
+
+                        <div class="mb-3">
+                            <label asp-for="AllowedBucket" class="form-label small fw-bold text-muted"></label>
+                            <select asp-for="AllowedBucket" class="form-select font-monospace" id="allowedBucketSelect">
+                                <option value="">-- انتخاب باکت --</option>
+                                @foreach (var b in Model.AvailableBuckets)
+                                {
+                                    <option value="@b" selected="@(b == Model.AllowedBucket ? "selected" : null)">@b</option>
+                                }
+                            </select>
+                            <div class="form-text small">کاربر فقط می‌تواند این باکت را مشاهده کند.</div>
+                        </div>
+
+                        <div class="mb-0">
+                            <label asp-for="AllowedPrefix" class="form-label small fw-bold text-muted"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-folder text-warning"></i></span>
+                                <input asp-for="AllowedPrefix" class="form-control font-monospace" dir="ltr" placeholder="مثال: reports/ یا media/audio/" id="allowedPrefixInput" />
+                            </div>
+                            <div class="form-text small">در صورت خالی گذاشتن، کاربر به کل ریشه باکت دسترسی دارد. در غیر این صورت فقط به این پوشه و زیرپوشه‌های آن دسترسی خواهد داشت.</div>
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mb-4">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveSwitch">
+                        <label class="form-check-label fw-bold small text-muted" for="isActiveSwitch">
+                            وضعیت فعال بودن حساب کاربری
+                        </label>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <a asp-action="Index" class="btn btn-outline-secondary">انصراف</a>
+                        <button type="submit" class="btn btn-primary d-flex align-items-center gap-2">
+                            <i class="bi bi-check-circle"></i> ذخیره تغییرات
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const roleSelect = document.getElementById('roleSelect');
+        const userScopeSection = document.getElementById('userScopeSection');
+
+        function toggleScopeSection() {
+            if (roleSelect.value === 'Admin') {
+                userScopeSection.style.display = 'none';
+            } else {
+                userScopeSection.style.display = 'block';
+            }
+        }
+
+        roleSelect.addEventListener('change', toggleScopeSection);
+        toggleScopeSection();
+    </script>
+}

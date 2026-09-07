@@ -1,0 +1,127 @@
+@model minio_csharpClient.Models.CreateUserViewModel
+@{
+    ViewData["Title"] = "ایجاد کاربر جدید";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white py-3 border-bottom">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-plus-fill text-primary fs-4"></i>
+                        <h5 class="fw-bold mb-0">افزودن کاربر جدید</h5>
+                    </div>
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-right"></i> بازگشت
+                    </a>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger py-2 small mb-3">
+                        <div asp-validation-summary="All" class="mb-0"></div>
+                    </div>
+                }
+
+                <form asp-action="Create" method="post" id="createUserForm">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-12">
+                            <label asp-for="Username" class="form-label small fw-bold text-muted"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-person text-muted"></i></span>
+                                <input asp-for="Username" class="form-control font-monospace" placeholder="مثال: ali_rezaei" autofocus required />
+                            </div>
+                            <span asp-validation-for="Username" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Password" class="form-label small fw-bold text-muted"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-lock text-muted"></i></span>
+                                <input asp-for="Password" type="password" class="form-control font-monospace" placeholder="حداقل ۶ کاراکتر" required />
+                            </div>
+                            <span asp-validation-for="Password" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="ConfirmPassword" class="form-label small fw-bold text-muted"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-lock-fill text-muted"></i></span>
+                                <input asp-for="ConfirmPassword" type="password" class="form-control font-monospace" placeholder="تکرار رمز عبور" required />
+                            </div>
+                            <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <hr class="my-4 text-muted">
+
+                    <div class="mb-3">
+                        <label asp-for="Role" class="form-label small fw-bold text-muted"></label>
+                        <select asp-for="Role" class="form-select" id="roleSelect">
+                            <option value="User">کاربر عادی (محدود به باکت یا پوشه مشخص)</option>
+                            <option value="Admin">مدیر سیستم (دسترسی کامل به تمام باکت‌ها و تنظیمات)</option>
+                        </select>
+                        <span asp-validation-for="Role" class="text-danger small"></span>
+                    </div>
+
+                    <div id="userScopeSection" class="p-3 bg-light rounded-3 mb-4">
+                        <h6 class="fw-bold mb-3 text-primary d-flex align-items-center gap-2">
+                            <i class="bi bi-shield-lock"></i> محدوده دسترسی کاربر عادی
+                        </h6>
+
+                        <div class="mb-3">
+                            <label asp-for="AllowedBucket" class="form-label small fw-bold text-muted"></label>
+                            <select asp-for="AllowedBucket" class="form-select font-monospace" id="allowedBucketSelect">
+                                <option value="">-- انتخاب باکت --</option>
+                                @foreach (var b in Model.AvailableBuckets)
+                                {
+                                    <option value="@b">@b</option>
+                                }
+                            </select>
+                            <div class="form-text small">کاربر فقط می‌تواند این باکت را مشاهده کند.</div>
+                        </div>
+
+                        <div class="mb-0">
+                            <label asp-for="AllowedPrefix" class="form-label small fw-bold text-muted"></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-folder text-warning"></i></span>
+                                <input asp-for="AllowedPrefix" class="form-control font-monospace" dir="ltr" placeholder="مثال: reports/ یا media/audio/" id="allowedPrefixInput" />
+                            </div>
+                            <div class="form-text small">در صورت خالی گذاشتن، کاربر به کل ریشه باکت دسترسی دارد. در غیر این صورت فقط به این پوشه و زیرپوشه‌های آن دسترسی خواهد داشت.</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <a asp-action="Index" class="btn btn-outline-secondary">انصراف</a>
+                        <button type="submit" class="btn btn-primary d-flex align-items-center gap-2">
+                            <i class="bi bi-check-circle"></i> ذخیره و ایجاد کاربر
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const roleSelect = document.getElementById('roleSelect');
+        const userScopeSection = document.getElementById('userScopeSection');
+
+        function toggleScopeSection() {
+            if (roleSelect.value === 'Admin') {
+                userScopeSection.style.display = 'none';
+            } else {
+                userScopeSection.style.display = 'block';
+            }
+        }
+
+        roleSelect.addEventListener('change', toggleScopeSection);
+        toggleScopeSection();
+    </script>
+}

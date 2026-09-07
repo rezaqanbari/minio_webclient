@@ -32,10 +32,8 @@ public class MinioService : IMinioService
             builder = builder.WithSSL();
         }
 
-        if (!string.IsNullOrWhiteSpace(_options.Region))
-        {
-            builder = builder.WithRegion(_options.Region);
-        }
+        var region = !string.IsNullOrWhiteSpace(_options.Region) ? _options.Region : "us-east-1";
+        builder = builder.WithRegion(region);
 
         _client = builder.Build();
     }
@@ -227,11 +225,6 @@ public class MinioService : IMinioService
 
     public async Task<(Stream Stream, string ContentType, string FileName)> DownloadObjectAsync(string bucketName, string objectKey)
     {
-        var statArgs = new StatObjectArgs()
-            .WithBucket(bucketName)
-            .WithObject(objectKey);
-
-        var stat = await _client.StatObjectAsync(statArgs);
         var memoryStream = new MemoryStream();
 
         var getArgs = new GetObjectArgs()
@@ -251,7 +244,7 @@ public class MinioService : IMinioService
             fileName = "downloaded_file";
         }
 
-        string contentType = !string.IsNullOrEmpty(stat.ContentType) ? stat.ContentType : "application/octet-stream";
+        string contentType = minio_csharpClient.Controllers.ObjectsController.GetExactMimeType(fileName);
 
         return (memoryStream, contentType, fileName);
     }
